@@ -2,3 +2,7 @@
 *.ko
 *.order
 *.symvers
+*.cmd
+.tmp_versions
+tufilter
+*.mod.c
