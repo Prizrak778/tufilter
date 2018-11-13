@@ -9,6 +9,7 @@
 
 #define MAJOR_NUM 101
 #define IOCTL_SET_MSG _IOR(MAJOR_NUM, 0, char *)
+#define IOCTL_GET_MSG _IOR(MAJOR_NUM, 1, char *)
 
 #define DEVICE_FILE_NAME "tufilter_dev"
 #define FLAG_TRANSPORT "--transport"
@@ -38,7 +39,16 @@ void ioctl_set_msg(int file_desc, char *messag, int flag)
 		exit(-1);
 	}
 }
-//void ioctl_show_filter(int file_desc, )
+void ioctl_show_filter(int file_desc)
+{
+	char messag[4];
+	int ret_val = ioctl(file_desc, IOCTL_GET_MSG, messag);
+	if(ret_val < 0)
+	{
+		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
+		exit(-1);
+	}
+}
 
 void ioctl_change_filter(int argc, char *argv[], int file_desc)
 {
@@ -98,7 +108,7 @@ int main(int argc, char *argv[])
 	}
 	else if(!strcmp(argv[1], FLAG_SHOW) && argc == 2)
 	{
-		//ioctl_show_filter(argc, argv, file_desc);
+		ioctl_show_filter(file_desc);
 		printf("--show done \n");
 	}
 	else if(!strcmp(argv[1], FLAG_HELP))
