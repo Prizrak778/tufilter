@@ -30,15 +30,34 @@ void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
 		exit(-1);
 	}
 }
+void ioctl_get_msg(int file_desc, struct DATA_SEND *messag)
+{
+	int ret_val = ioctl(file_desc, IOCTL_GET_MSG, messag);
+	if(ret_val < 0)
+	{
+		printf("Ошибка при вызове ioctl_set_msg: %d\n", ret_val);
+		exit(-1);
+	}
+}
+
 void ioctl_show_filter(int file_desc)
 {
 	struct DATA_SEND *messag = malloc(sizeof(struct DATA_SEND));
-	int ret_val = ioctl(file_desc, IOCTL_GET_MSG, messag);
+	int* col_row = malloc(sizeof(int));
+	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, col_row);
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
 		exit(-1);
 	}
+	for(int i = 0; i < *col_row; i++)
+	{
+		ioctl_get_msg(file_desc, messag);
+		printf("Protocol = %d, ipaddr = %s, port = %s\n", messag->protocol, messag->ipaddr, messag->port);
+	}
+	free(messag);
+	free(col_row);
+
 }
 
 void ioctl_change_filter(int argc, char *argv[], int file_desc)
@@ -80,6 +99,7 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
 	printf("%s\n", data->ipaddr);
 	ioctl_set_msg(file_desc, data);
+	free(data);
 }
 
 
