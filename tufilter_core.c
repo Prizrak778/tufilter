@@ -1,8 +1,13 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
+#include <asm/uaccess.h>
 #include "Header.h"
-#include <asm/uaccess.h>        /* определения функций get_user и put_user */
+
+
+MODULE_AUTHOR("Double <v.merkel778@gmail.com>");
+MODULE_DESCRIPTION("tufilter");
+MODULE_LICENSE("GPL");
 
 #define SUCCESS 0
 #define DEVICE_NAME "tufilter_dev"
@@ -57,7 +62,7 @@ unsigned long ioctl_param)
   int i;
   char *temp;
   char ch;
-
+  struct DATA_SEND data;
   /*
    * Реакция на различные команды ioctl
    */
@@ -72,10 +77,8 @@ unsigned long ioctl_param)
 	/*
 	 * Найти длину сообщения
 	 */
-	get_user(ch, temp);
-	for (i = 0; ch && i < BUF_LEN; i++, temp++)
-		get_user(ch, temp);
-
+	copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
+	printk("read, port = %d, ip_addr = %s, filter = %d, protocol = %d", data.port, data.ipaddr, data.filter, data.protocol);
 	//device_write(file, (char *)ioctl_param, i, 0);
 	  break;
 
