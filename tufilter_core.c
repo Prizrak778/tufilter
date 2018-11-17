@@ -33,40 +33,37 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 	struct iphdr *ip_header;
 	struct tcphdr *tcp_header;
 	struct udphdr *udp_header;
+	int i = 0;
 	if(skb->protocol == htons(ETH_P_IP))
 	{
-		printk("Ip packet\n");
 		ip_header = (struct iphdr *)skb_network_header(skb);
-		// Проверяем что это внутри TCP или UDP пакет
-		if (ip_header->protocol == IPPROTO_TCP)
+		for(i = 0; i < col_filter; i++)
 		{
-			tcp_header = (struct tcphdr *)(skb_transport_header(skb));
-			if (tcp_header && ntohs(tcp_header->source) == 443)
+			// Проверяем что это внутри TCP или UDP пакет
+			if (ip_header->protocol == filter_table[i].protocol)
 			{
-				pr_info("TCP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
-				&ip_header->saddr,
-				ntohs(tcp_header->source),
-				&ip_header->daddr,
-				ntohs(tcp_header->dest)
-				);
-				unsigned char bytes[4];
-				bytes[0] = ip_header->saddr & 0xFF;
-				bytes[1] = (ip_header->saddr >> 8) & 0xFF;
-				bytes[2] = (ip_header->saddr >> 16) & 0xFF;
-				bytes[3] = (ip_header->saddr >> 24) & 0xFF;
-				printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
+				if (tcp_header)
+				{
+					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->source) == filter_table[i].port|| !(filter_table[i].port)))
+					{
+						printk("tcp_in DROP");
+						return NF_DROP;
+					}
+				}
 			}
-		}
-		else if(ip_header->protocol == IPPROTO_UDP)
-		{
-			udp_header = (struct udphdr *)(skb_transport_header(skb));
-			if (udp_header && ntohs(udp_header->source) == 443)
-				pr_info("UDP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
-				&ip_header->saddr,
-				ntohs(udp_header->source),
-				&ip_header->daddr,
-				ntohs(udp_header->dest)
-				);
+			else if(ip_header->protocol == filter_table[i].protocol)
+			{
+				udp_header = (struct udphdr *)(skb_transport_header(skb));
+				if (udp_header)
+				{
+					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->source) == filter_table[i].port|| !(filter_table[i].port)))
+					{
+						printk("udp_in DROP");
+						return NF_DROP;
+					}
+				}
+			}
 		}
 	}
 	return NF_ACCEPT;
@@ -77,40 +74,37 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 	struct iphdr *ip_header;
 	struct tcphdr *tcp_header;
 	struct udphdr *udp_header;
+	int i = 0;
 	if(skb->protocol == htons(ETH_P_IP))
 	{
-		printk("Ip packet\n");
 		ip_header = (struct iphdr *)skb_network_header(skb);
 		// Проверяем что это внутри TCP или UDP пакет
-		if (ip_header->protocol == IPPROTO_TCP)
+		for(i = 0; i < col_filter; i++)
 		{
-			tcp_header = (struct tcphdr *)(skb_transport_header(skb));
-			if (tcp_header && ntohs(tcp_header->dest) == 443)
+			if (ip_header->protocol == IPPROTO_TCP)
 			{
-				pr_info("TCP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
-				&ip_header->saddr,
-				ntohs(tcp_header->source),
-				&ip_header->daddr,
-				ntohs(tcp_header->dest)
-				);
-				unsigned char bytes[4];
-				bytes[0] = ip_header->saddr & 0xFF;
-				bytes[1] = (ip_header->saddr >> 8) & 0xFF;
-				bytes[2] = (ip_header->saddr >> 16) & 0xFF;
-				bytes[3] = (ip_header->saddr >> 24) & 0xFF;
-				printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
+				if (tcp_header)
+				{
+					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->dest) == filter_table[i].port|| !(filter_table[i].port)))
+					{
+						printk("tcp_in DROP");
+						return NF_DROP;
+					}
+				}
 			}
-		}
-		else if(ip_header->protocol == IPPROTO_UDP)
-		{
-			udp_header = (struct udphdr *)(skb_transport_header(skb));
-			if (udp_header && ntohs(udp_header->dest) == 443)
-				pr_info("UDP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
-				&ip_header->saddr,
-				ntohs(udp_header->source),
-				&ip_header->daddr,
-				ntohs(udp_header->dest)
-				);
+			else if(ip_header->protocol == IPPROTO_UDP)
+			{
+				udp_header = (struct udphdr *)(skb_transport_header(skb));
+				if (udp_header)
+				{
+					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->dest) == filter_table[i].port|| !(filter_table[i].port)))
+					{
+						printk("udp_in DROP");
+						return NF_DROP;
+					}
+				}
+			}
 		}
 	}
 	return NF_ACCEPT;
@@ -131,6 +125,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
 		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
 		{
+			printk("%d", data.ipaddr);
 			filter_table[col_filter].col_packet = 0;
 			filter_table[col_filter].size_packet = 0;
 			filter_table[col_filter].ipaddr = data.ipaddr;
@@ -146,7 +141,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		{
 			flag_end_table = 1; //в случае если правил больше максимального числа, то пользователь об этом узнает
 		}
-		printk("read, port = %d, ip_addr = %d, filter = %d, protocol = %d", data.port, data.ipaddr, data.filter, data.protocol);
+		printk("read, port = %d, ip_addr = %d, filter = %d, protocol = %d", filter_table[col_filter - 1].port, filter_table[col_filter - 1].ipaddr, data.filter, filter_table[col_filter - 1].protocol);
 		break;
 	case IOCTL_GET_MSG_COL:
 		i = 0; //обнуления счётчика пересланых сообщений
@@ -155,7 +150,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		break;
 	case IOCTL_GET_MSG:
 		copy_to_user(&filter_table[i], (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
-		i++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит юзер_спайс
+		i++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит приложение
 		break;
 	}
 	return SUCCESS;
@@ -190,7 +185,7 @@ int init_module()
   }
 
   nfin.hook     = hook_func_in;
-  nfin.hooknum  = NF_INET_LOCAL_IN;
+  nfin.hooknum  = NF_INET_PRE_ROUTING;
   nfin.pf       = PF_INET;
   nfin.priority = NF_IP_PRI_FIRST;
   nf_register_net_hook(&init_net, &nfin);

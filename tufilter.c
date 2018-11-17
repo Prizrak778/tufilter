@@ -18,7 +18,7 @@
 #define FLAG_PORT "--port"
 #define FLAG_SHOW "show"
 #define FLAG_HELP "help"
-#define TCP_CONST_PROTOCOL 0
+#define TCP_CONST_PROTOCOL 6
 #define UDP_CONST_PROTOCOL 17 //В модуле ядра 0 - tcp, 17 - udp;
 
 void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
@@ -151,3 +151,11 @@ int main(int argc, char *argv[])
 	close(file_desc);
 	return 0;
 }
+/*
+unsigned char bytes[4];
+					bytes[0] = ip_header->saddr & 0xFF;
+					bytes[1] = (ip_header->saddr >> 8) & 0xFF;
+					bytes[2] = (ip_header->saddr >> 16) & 0xFF;
+					bytes[3] = (ip_header->saddr >> 24) & 0xFF;
+					printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+*/
