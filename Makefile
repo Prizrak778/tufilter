@@ -10,7 +10,7 @@ module_core: tufilter
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 endif
 tufilter: tufilter.c
-	gcc tufilter.c -std=c99 -o tufilter
+	gcc tufilter.c -std=gnu99 -o tufilter
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean

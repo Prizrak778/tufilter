@@ -2,8 +2,18 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h>
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+#include <net/ip.h>
+#include <linux/inet.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 #include "Header.h"
 
+struct DATA_FILTER filter_table[MAX_COL_FILTER];
+int col_filter = 0;
 
 MODULE_AUTHOR("Double <v.merkel778@gmail.com>");
 MODULE_DESCRIPTION("tufilter");
@@ -14,98 +24,149 @@ MODULE_LICENSE("GPL");
 #define BUF_LEN 80
 #define MAJOR_NUM 101
 
-static int Device_Open = 0;
-static char Message[BUF_LEN];
-static char *Message_Ptr;
+static struct nf_hook_ops nfin;
+static struct nf_hook_ops nfout;
 
-static int device_open(struct inode *inode, struct file *file)
+static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+
 {
-#ifdef DEBUG
-  printk("device_open(%p)\n", file);
-#endif
+	struct iphdr *ip_header;
+	struct tcphdr *tcp_header;
+	struct udphdr *udp_header;
+	if(skb->protocol == htons(ETH_P_IP))
+	{
+		printk("Ip packet\n");
+		ip_header = (struct iphdr *)skb_network_header(skb);
+		// Проверяем что это внутри TCP или UDP пакет
+		if (ip_header->protocol == IPPROTO_TCP)
+		{
+			tcp_header = (struct tcphdr *)(skb_transport_header(skb));
+			if (tcp_header && ntohs(tcp_header->source) == 443)
+			{
+				pr_info("TCP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
+				&ip_header->saddr,
+				ntohs(tcp_header->source),
+				&ip_header->daddr,
+				ntohs(tcp_header->dest)
+				);
+				unsigned char bytes[4];
+				bytes[0] = ip_header->saddr & 0xFF;
+				bytes[1] = (ip_header->saddr >> 8) & 0xFF;
+				bytes[2] = (ip_header->saddr >> 16) & 0xFF;
+				bytes[3] = (ip_header->saddr >> 24) & 0xFF;
+				printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+			}
+		}
+		else if(ip_header->protocol == IPPROTO_UDP)
+		{
+			udp_header = (struct udphdr *)(skb_transport_header(skb));
+			if (udp_header && ntohs(udp_header->source) == 443)
+				pr_info("UDP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
+				&ip_header->saddr,
+				ntohs(udp_header->source),
+				&ip_header->daddr,
+				ntohs(udp_header->dest)
+				);
+		}
+	}
+	return NF_ACCEPT;
+}
+static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 
-  /*
-   * В каждый конкретный момент времени только один процесс может открыть файл устройства
-   */
-  if (Device_Open)
-	  return -EBUSY;
-
-  Device_Open++;
-  /*
-   * Инициализация сообщения
-   */
-  Message_Ptr = Message;
-  try_module_get(THIS_MODULE);
-  return SUCCESS;
+{
+	struct iphdr *ip_header;
+	struct tcphdr *tcp_header;
+	struct udphdr *udp_header;
+	if(skb->protocol == htons(ETH_P_IP))
+	{
+		printk("Ip packet\n");
+		ip_header = (struct iphdr *)skb_network_header(skb);
+		// Проверяем что это внутри TCP или UDP пакет
+		if (ip_header->protocol == IPPROTO_TCP)
+		{
+			tcp_header = (struct tcphdr *)(skb_transport_header(skb));
+			if (tcp_header && ntohs(tcp_header->dest) == 443)
+			{
+				pr_info("TCP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
+				&ip_header->saddr,
+				ntohs(tcp_header->source),
+				&ip_header->daddr,
+				ntohs(tcp_header->dest)
+				);
+				unsigned char bytes[4];
+				bytes[0] = ip_header->saddr & 0xFF;
+				bytes[1] = (ip_header->saddr >> 8) & 0xFF;
+				bytes[2] = (ip_header->saddr >> 16) & 0xFF;
+				bytes[3] = (ip_header->saddr >> 24) & 0xFF;
+				printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+			}
+		}
+		else if(ip_header->protocol == IPPROTO_UDP)
+		{
+			udp_header = (struct udphdr *)(skb_transport_header(skb));
+			if (udp_header && ntohs(udp_header->dest) == 443)
+				pr_info("UDP SRC: (%pI4):%d --> DST: (%pI4):%d\n",
+				&ip_header->saddr,
+				ntohs(udp_header->source),
+				&ip_header->daddr,
+				ntohs(udp_header->dest)
+				);
+		}
+	}
+	return NF_ACCEPT;
 }
 
-static int device_release(struct inode *inode, struct file *file)
+long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param)
 {
-#ifdef DEBUG
-  printk("device_release(%p,%p)\n", inode, file);
-#endif
-
-  /*
-   * Теперь мы готовы принять запрос от другого процесса
-   */
-  Device_Open--;
-
-  module_put(THIS_MODULE);
-  return SUCCESS;
-}
-
-long device_ioctl(/*struct inode *inode,*/ /* см. include/linux/fs.h */
-struct file *file,              /* то же самое */
-unsigned int ioctl_num,         /* номер и аргументы ioctl */
-unsigned long ioctl_param)
-{
-  int i;
-  char *temp;
-  char ch;
-  struct DATA_SEND data;
-  /*
-   * Реакция на различные команды ioctl
-   */
-  switch (ioctl_num) {
-  case IOCTL_SET_MSG:
-	  /*
-	 * Принять указатель на сообщение (в пространстве пользователя)
-	 * и переписать в буфер. Адрес которого задан в дополнительно аргументе.
-	 */
-	  temp = (char *)ioctl_param;
-
+	int i;
+	struct DATA_SEND data;
+	int flag_end_table;
 	/*
-	 * Найти длину сообщения
-	 */
-	copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
-	printk("read, port = %d, ip_addr = %s, filter = %d, protocol = %d", data.port, data.ipaddr, data.filter, data.protocol);
-	//device_write(file, (char *)ioctl_param, i, 0);
-	  break;
+	* Реакция на различные команды ioctl
+	*/
+	switch (ioctl_num) {
+	case IOCTL_SET_MSG:
+		//принять новое правило
+		flag_end_table = 0;
+		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
+		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
+		{
+			filter_table[col_filter].col_packet = 0;
+			filter_table[col_filter].size_packet = 0;
+			filter_table[col_filter].ipaddr = data.ipaddr;
+			filter_table[col_filter].port = data.port;
+			filter_table[col_filter].protocol = data.protocol;
+			col_filter++;
+		}
+		else if(data.filter == 0)
+		{
 
-  case IOCTL_GET_MSG:
-	  /*
-	 * Передать текущее сообщение вызывающему процессу -
-	 * записать по указанному адресу.
-	 */
-	  //i = device_read(file, (char *)ioctl_param, 99, 0);
-
-	/*
-	 * Вставить в буфер завершающий символ \0
-	 */
-	put_user('\0', (char *)ioctl_param + i);
-	  break;
-
-  }
-
-  return SUCCESS;
+		}
+		else
+		{
+			flag_end_table = 1; //в случае если правил больше максимального числа, то пользователь об этом узнает
+		}
+		printk("read, port = %d, ip_addr = %d, filter = %d, protocol = %d", data.port, data.ipaddr, data.filter, data.protocol);
+		break;
+	case IOCTL_GET_MSG_COL:
+		i = 0; //обнуления счётчика пересланых сообщений
+		copy_to_user(&col_filter, (int *)ioctl_param, sizeof(int)); //передаём кол записей в таблице
+		printk("write %d\n", col_filter);
+		break;
+	case IOCTL_GET_MSG:
+		copy_to_user(&filter_table[i], (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
+		i++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит юзер_спайс
+		break;
+	}
+	return SUCCESS;
 }
 
 struct file_operations Fops = {
   .read = NULL,
   .write = NULL,
   .unlocked_ioctl = device_ioctl,
-  .open = device_open,
-  .release = device_release,    /* оно же close */
+  .open = NULL,
+  .release = NULL,
 };
 
 /*
@@ -128,6 +189,16 @@ int init_module()
 	return ret_val;
   }
 
+  nfin.hook     = hook_func_in;
+  nfin.hooknum  = NF_INET_LOCAL_IN;
+  nfin.pf       = PF_INET;
+  nfin.priority = NF_IP_PRI_FIRST;
+  nf_register_net_hook(&init_net, &nfin);
+  nfout.hook     = hook_func_out;
+  nfout.hooknum  = NF_INET_LOCAL_OUT;
+  nfout.pf       = PF_INET;
+  nfout.priority = NF_IP_PRI_FIRST;
+  nf_register_net_hook(&init_net, &nfout);
   printk("%s The major device number is %d.\n",
   "Registeration is a success", MAJOR_NUM);
   printk("If you want to talk to the device driver,\n");
@@ -150,4 +221,6 @@ void cleanup_module()
    * Дерегистрация устройства
    */
   unregister_chrdev(MAJOR_NUM, DEVICE_NAME);
+  nf_unregister_net_hook(&init_net, &nfin);
+  nf_unregister_net_hook(&init_net, &nfout);
 }

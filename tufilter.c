@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <linux/ioctl.h>
 #include <sys/ioctl.h>
 #include <getopt.h>
 #include "Header.h"
-
-
 
 #define DEVICE_FILE_NAME "tufilter_dev"
 #define FLAG_TRANSPORT "transport"
@@ -45,6 +45,7 @@ void ioctl_show_filter(int file_desc)
 	struct DATA_SEND *messag = malloc(sizeof(struct DATA_SEND));
 	int* col_row = malloc(sizeof(int));
 	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, col_row);
+	printf("col_filter %d\n", *col_row);
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
@@ -87,17 +88,17 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
-	struct in_addr in_addr_test;
-	if((inet_aton(argv[ipaddr_flag + 1], &in_addr_test) == 0) && ipaddr_flag > 0)
+	struct in_addr in_addr_send;
+	if((inet_aton(argv[ipaddr_flag + 1], &in_addr_send) == 0) && ipaddr_flag > 0)
 	{
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
 	data->port = atoi(argv[port_flag + 1]);
-	ipaddr_flag == -1 ? strcpy(data->ipaddr, "*\0") : strcpy(data->ipaddr, argv[ipaddr_flag + 1]);
+	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
 	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0);
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
-	printf("%s\n", data->ipaddr);
+	printf("%d\n", data->ipaddr);
 	ioctl_set_msg(file_desc, data);
 	free(data);
 }
