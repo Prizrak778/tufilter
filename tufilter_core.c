@@ -110,9 +110,28 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 	return NF_ACCEPT;
 }
 
+void del_filter(int cmp_index)
+{
+	int i;
+	for(i = cmp_index; i < col_filter - 1; i++)
+	{
+		filter_table[i] = filter_table[i + 1];
+	}
+}
+
+int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
+{
+	if(filter_str.ipaddr == data.ipaddr && filter_str.port == data.port && filter_str.protocol == data.protocol)
+	{
+		return index;
+	}
+	return 0;
+}
+
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param)
 {
 	int i;
+	int cmp_index = 0;
 	struct DATA_SEND data;
 	int flag_end_table;
 	/*
@@ -125,7 +144,6 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
 		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
 		{
-			printk("%d", data.ipaddr);
 			filter_table[col_filter].col_packet = 0;
 			filter_table[col_filter].size_packet = 0;
 			filter_table[col_filter].ipaddr = data.ipaddr;
@@ -135,12 +153,18 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		}
 		else if(data.filter == 0)
 		{
-
+			for(i = 0; i < col_filter || cmp_index ; i++)
+			{
+				cmp_index = cmp_filter(filter_table[i], data, i);
+			}
+			del_filter(cmp_index);
+			col_filter--;
 		}
 		else
 		{
 			flag_end_table = 1; //в случае если правил больше максимального числа, то пользователь об этом узнает
 		}
+		cmp_index = 0;
 		printk("read, port = %d, ip_addr = %d, filter = %d, protocol = %d", filter_table[col_filter - 1].port, filter_table[col_filter - 1].ipaddr, data.filter, filter_table[col_filter - 1].protocol);
 		break;
 	case IOCTL_GET_MSG_COL:
