@@ -145,17 +145,14 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 	switch (ioctl_num) {
 	case IOCTL_SET_MSG:
 		//принять новое правило
-		flag_end_table = 0;
+		flag_table = 0;
 		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
 
 		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
 		{
 			for(i = 0; i < col_filter || cmp_index; i++)
 			{
-				for(i = 0; i < col_filter || cmp_index ; i++)
-				{
-					cmp_index = cmp_filter(filter_table[i], data, i);
-				}
+				cmp_index = cmp_filter(filter_table[i], data, i);//в случае если такое правило уже существует пользователь об этом узнает
 			}
 			if(!cmp_index)
 			{
@@ -168,7 +165,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 			}
 			else
 			{
-				flag_table = 2;
+				flag_table = 2; //в случае если добовляемый фильтр уже
 			}
 		}
 		else if(data.filter == 0)
@@ -193,6 +190,9 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 	case IOCTL_GET_MSG:
 		copy_to_user((struct DATA_FILTER *)ioctl_param, &filter_table[index_filter_get],  sizeof(struct DATA_FILTER));
 		index_filter_get++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит приложение
+		break;
+	case IOCTL_GET_FLAG_FILTER:
+		copy_to_user((int *)ioctl_param, &flag_table, sizeof(int)); //возврат флага для пользователя
 		break;
 	}
 	return SUCCESS;

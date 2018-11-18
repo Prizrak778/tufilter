@@ -77,7 +77,6 @@ void ioctl_show_filter(int file_desc)
 		printf("\n");
 	}
 	free(messag);
-
 }
 
 //функция для добавления/удаления правила/фильтра
@@ -122,6 +121,25 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
 	ioctl_set_msg(file_desc, data);
 	free(data);
+
+}
+//функция для вывода результата добавления фильтра
+void show_answer(int file_desc)
+{
+	int flag_filter;
+	//получение количество активных правил
+	int ret_val = ioctl(file_desc, IOCTL_GET_FLAG_FILTER, &flag_filter);
+	if(ret_val < 0)
+	{
+		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
+		exit(-1);
+	}
+	if(flag_filter == 1)
+		printf("Максимальное количество активных правил, новое правило не добавлено\n");
+	else if(flag_filter == 2)
+		printf("Такое правило уже существует\n");
+	else
+		printf("done\n");
 }
 
 void show_help()
@@ -171,11 +189,11 @@ int main(int argc, char *argv[])
 	switch (flag_case) {
 	case 1:
 		ioctl_change_filter(argc, argv, file_desc);
-		printf("--transport done \n");
+		show_answer(file_desc);
 		break;
 	case 2:
 		ioctl_show_filter(file_desc);
-		printf("--show done \n");
+		printf("show done \n");
 		break;
 	case 3:
 		show_help();
