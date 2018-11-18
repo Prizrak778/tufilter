@@ -60,6 +60,10 @@ void ioctl_show_filter(int file_desc)
 	struct in_addr in_addr_get;
 	//основной вывод
 	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\n");
+	if(col_row < 1)
+	{
+		printf("-- empty -- \n");
+	}
 	for(int i = 0; i < col_row; i++)
 	{
 		ioctl_get_msg(file_desc, messag);
@@ -120,6 +124,21 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	free(data);
 }
 
+void show_help()
+{
+	printf("./tufilter --show - показывает активные правила, если они есть, и статистику по ним(кол пакетов и размер)\n");
+	printf("./tufilter --transport proto - добавить или удалить фильтр, protocol имя протокола (tcp или udp)\n\n");
+	printf("Опции(для --transport):\n");
+	printf("--ip addres указать ip адрес(ipv4) для блокировки, может отсутствовать\n");
+	printf("--port port указать порт для блокировки, может отсутствовать\n");
+	printf("--filter filter указать отключить(disable) или включить(enable) данный фильтр\n\n");
+	printf("Пример:\n");
+	printf("./tufilter --transport tcp --ip 8.8.8.8 --port 443 --filter enable\n");
+	printf("./tufilter --transport tcp --port 80 --filter Enable\n");
+	printf("./tufilter --transport udp --ip 8.8.8.8 --filter Enable\n");
+	printf("./tufilter --transport udp --ip 8.8.8.8 --filter disable\n");
+	printf("./tufilter --show\n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -159,7 +178,7 @@ int main(int argc, char *argv[])
 		printf("--show done \n");
 		break;
 	case 3:
-		printf("--help done \n");
+		show_help();
 		break;
 	default:
 		printf("Try 'tufilter --help' for more information\n");
