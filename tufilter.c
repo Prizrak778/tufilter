@@ -21,6 +21,7 @@
 #define TCP_CONST_PROTOCOL 6
 #define UDP_CONST_PROTOCOL 17 //В модуле ядра 0 - tcp, 17 - udp;
 
+//функция для отправки одного сообещния
 void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
 {
 	int ret_val = ioctl(file_desc, IOCTL_SET_MSG, messag);
@@ -30,6 +31,8 @@ void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
 		exit(-1);
 	}
 }
+
+//функция для получения одного сообщения
 void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 {
 	int ret_val = ioctl(file_desc, IOCTL_GET_MSG, messag);
@@ -40,20 +43,22 @@ void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 	}
 }
 
+//функция для просмотра активных правил и статистики по ним
 void ioctl_show_filter(int file_desc)
 {
 	struct DATA_FILTER *messag = malloc(sizeof(struct DATA_FILTER));
 	int col_row;
+	//получение количество активных правил
 	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, &col_row);
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
 		exit(-1);
 	}
-	unsigned char bytes[4];
 	char protocol_str[4];
 	char ipaddr_get[16];
 	struct in_addr in_addr_get;
+	//основной вывод
 	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\n");
 	for(int i = 0; i < col_row; i++)
 	{
@@ -71,10 +76,12 @@ void ioctl_show_filter(int file_desc)
 
 }
 
+//функция для добавления/удаления правила/фильтра
 void ioctl_change_filter(int argc, char *argv[], int file_desc)
 {
 	struct DATA_SEND *data = malloc(sizeof(struct DATA_SEND));
 	int filter_flag = -1, port_flag = -1, ipaddr_flag = -1;
+	//проверка на наличия нужных флагов и их значений
 	for(int i = 0; i < argc; i++)
 	{
 		if(!strcmp(argv[i], FLAG_FILTER)) filter_flag = i;
@@ -104,9 +111,10 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
+	//запись в структуру для передачи
 	port_flag == -1 ? (data->port = -1) : (data->port = atoi(argv[port_flag + 1]));
 	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
-	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0);
+	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0); //strcasecmp - функция для сравнения строк без учёта регистра
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
 	ioctl_set_msg(file_desc, data);
 	free(data);
@@ -118,7 +126,9 @@ int main(int argc, char *argv[])
 	int flag_case;
 	const char* short_options = "h";
 	int option_index = -1;
-	const struct option long_options[] = {
+	//структура для "длинных" входных параметров
+	const struct option long_options[] =
+	{
 	{FLAG_TRANSPORT, 1, &flag_case , 1},
 	{"port", 1, NULL, 1},
 	{"ip", 1, NULL , 1},
@@ -138,7 +148,7 @@ int main(int argc, char *argv[])
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
-	while (getopt_long (argc, argv, short_options, long_options, &option_index) !=-1);
+	while (getopt_long (argc, argv, short_options, long_options, &option_index) != -1);
 	switch (flag_case) {
 	case 1:
 		ioctl_change_filter(argc, argv, file_desc);

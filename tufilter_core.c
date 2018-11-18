@@ -17,7 +17,7 @@ int col_filter = 0;
 int index_filter_get = 0;
 int flag_end_table = 0;
 
-MODULE_AUTHOR("Double <v.merkel778@gmail.com>");
+MODULE_AUTHOR("spear_soul <v.merkel778@gmail.com>");
 MODULE_DESCRIPTION("tufilter");
 MODULE_LICENSE("GPL");
 
@@ -29,8 +29,8 @@ MODULE_LICENSE("GPL");
 static struct nf_hook_ops nfin;
 static struct nf_hook_ops nfout;
 
+//функция перехвата приходящих пакетов
 static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
-
 {
 	struct iphdr *ip_header;
 	struct tcphdr *tcp_header;
@@ -72,6 +72,8 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 	}
 	return NF_ACCEPT;
 }
+
+//функция для перехвата исходящих пакетов
 static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
 	struct iphdr *ip_header;
@@ -115,6 +117,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 	return NF_ACCEPT;
 }
 
+//функция для удаления правила
 void del_filter(int cmp_index)
 {
 	int i;
@@ -123,7 +126,7 @@ void del_filter(int cmp_index)
 		filter_table[i] = filter_table[i + 1];
 	}
 }
-
+//функция для сравнения правил
 int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
 {
 	if(filter_str.ipaddr == data.ipaddr && filter_str.port == data.port && filter_str.protocol == data.protocol)
@@ -135,13 +138,9 @@ int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
 
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param)
 {
-	int i;
 	int cmp_index = 0;
 	struct DATA_SEND data;
-
-	/*
-	* Реакция на различные команды ioctl
-	*/
+	//Реакция на различные команды ioctl
 	switch (ioctl_num) {
 	case IOCTL_SET_MSG:
 		//принять новое правило
@@ -203,16 +202,20 @@ int init_module()
 		"Sorry, registering the character device ", ret_val);
 		return ret_val;
 	}
+	//стурктура для регистрации функции перехвата сообщений
 	nfin.hook     = hook_func_in;
 	nfin.hooknum  = NF_INET_PRE_ROUTING;
 	nfin.pf       = PF_INET;
 	nfin.priority = NF_IP_PRI_FIRST;
+	//регистрация этой функции
 	nf_register_net_hook(&init_net, &nfin);
 	nfout.hook     = hook_func_out;
 	nfout.hooknum  = NF_INET_POST_ROUTING;
 	nfout.pf       = PF_INET;
 	nfout.priority = NF_IP_PRI_FIRST;
 	nf_register_net_hook(&init_net, &nfout);
+
+	//Небольшая подсказка для передачи данных, можно увидеть с помощью dmesg
 	printk("%s The major device number is %d.\n",
 	"Registeration is a success", MAJOR_NUM);
 	printk("If you want to talk to the device driver,\n");
@@ -224,8 +227,8 @@ int init_module()
 	printk("file you'll use.\n");
 	return 0;
 }
-//Завершение работы модуля - дерегистрация файла в /proc
 
+//Завершение работы модуля - дерегистрация файла в /proc
 void cleanup_module()
 {
 	//Дерегистрация устройства
