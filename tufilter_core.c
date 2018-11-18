@@ -15,7 +15,7 @@
 struct DATA_FILTER filter_table[MAX_COL_FILTER];
 int col_filter = 0;
 int index_filter_get = 0;
-int flag_end_table = 0;
+int flag_table = 0;
 
 MODULE_AUTHOR("spear_soul <v.merkel778@gmail.com>");
 MODULE_DESCRIPTION("tufilter");
@@ -138,7 +138,8 @@ int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
 
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param)
 {
-	int cmp_index = 0;
+	int i = 0;
+	int cmp_index = 0; //для получения индекса совпадающих фильтров
 	struct DATA_SEND data;
 	//Реакция на различные команды ioctl
 	switch (ioctl_num) {
@@ -146,14 +147,29 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		//принять новое правило
 		flag_end_table = 0;
 		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
+
 		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
 		{
-			filter_table[col_filter].col_packet = 0;
-			filter_table[col_filter].size_packet = 0;
-			filter_table[col_filter].ipaddr = data.ipaddr;
-			filter_table[col_filter].port = data.port;
-			filter_table[col_filter].protocol = data.protocol;
-			col_filter++;
+			for(i = 0; i < col_filter || cmp_index; i++)
+			{
+				for(i = 0; i < col_filter || cmp_index ; i++)
+				{
+					cmp_index = cmp_filter(filter_table[i], data, i);
+				}
+			}
+			if(!cmp_index)
+			{
+				filter_table[col_filter].col_packet = 0;
+				filter_table[col_filter].size_packet = 0;
+				filter_table[col_filter].ipaddr = data.ipaddr;
+				filter_table[col_filter].port = data.port;
+				filter_table[col_filter].protocol = data.protocol;
+				col_filter++;
+			}
+			else
+			{
+				flag_table = 2;
+			}
 		}
 		else if(data.filter == 0)
 		{
@@ -166,7 +182,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		}
 		else
 		{
-			flag_end_table = 1; //в случае если правил больше максимального числа, то пользователь об этом узнает
+			flag_table = 1; //в случае если правил больше максимального числа, то пользователь об этом узнает
 		}
 		cmp_index = 0;
 		break;
