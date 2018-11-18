@@ -7,3 +7,4 @@
 tufilter
 *.mod.c
 tufilter_dev
+*.swp
