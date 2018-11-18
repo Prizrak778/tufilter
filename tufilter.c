@@ -30,7 +30,7 @@ void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
 		exit(-1);
 	}
 }
-void ioctl_get_msg(int file_desc, struct DATA_SEND *messag)
+void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 {
 	int ret_val = ioctl(file_desc, IOCTL_GET_MSG, messag);
 	if(ret_val < 0)
@@ -42,22 +42,35 @@ void ioctl_get_msg(int file_desc, struct DATA_SEND *messag)
 
 void ioctl_show_filter(int file_desc)
 {
-	struct DATA_SEND *messag = malloc(sizeof(struct DATA_SEND));
-	int* col_row = malloc(sizeof(int));
-	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, col_row);
-	printf("col_filter %d\n", *col_row);
+	struct DATA_FILTER *messag = malloc(sizeof(struct DATA_FILTER));
+	//int *col_row = malloc(sizeof(int));
+	int col_row;
+	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, &col_row);
+	printf("col_filter %d\n", col_row);
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
 		exit(-1);
 	}
-	for(int i = 0; i < *col_row; i++)
+	unsigned char bytes[4];
+	char protocol_str[4];
+	char ipaddr_get[16];
+	struct in_addr in_addr_get;
+	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\n");
+	for(int i = 0; i < col_row; i++)
 	{
 		ioctl_get_msg(file_desc, messag);
-		printf("Protocol = %d, ipaddr = %s, port = %s\n", messag->protocol, messag->ipaddr, messag->port);
+		messag->protocol == TCP_CONST_PROTOCOL ? strcpy(protocol_str, "tcp") : strcpy(protocol_str, "udp");
+		messag->ipaddr == -1 ? strcpy(ipaddr_get, "0.0.0.0") : (in_addr_get.s_addr = messag->ipaddr, strcpy(ipaddr_get, inet_ntoa(in_addr_get)));
+		printf("%d\t%d\t\t%d\tDROP\t%s\t%s", i, messag->col_packet, messag->size_packet, protocol_str, ipaddr_get);
+		if(messag->port != -1)
+		{
+			printf(":%d", messag->port);
+		}
+		printf("\n");
 	}
 	free(messag);
-	free(col_row);
+	//free(col_row);
 
 }
 
@@ -94,7 +107,7 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
-	data->port = atoi(argv[port_flag + 1]);
+	port_flag == -1 ? (data->port = -1) : (data->port = atoi(argv[port_flag + 1]));
 	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
 	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0);
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);

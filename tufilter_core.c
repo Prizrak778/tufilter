@@ -14,6 +14,7 @@
 
 struct DATA_FILTER filter_table[MAX_COL_FILTER];
 int col_filter = 0;
+int index_filter_get = 0;
 
 MODULE_AUTHOR("Double <v.merkel778@gmail.com>");
 MODULE_DESCRIPTION("tufilter");
@@ -26,6 +27,7 @@ MODULE_LICENSE("GPL");
 
 static struct nf_hook_ops nfin;
 static struct nf_hook_ops nfout;
+
 
 static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 
@@ -45,7 +47,7 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
 				if (tcp_header)
 				{
-					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->source) == filter_table[i].port|| !(filter_table[i].port)))
+					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->source) == filter_table[i].port|| filter_table[i].port == -1))
 					{
 						printk("tcp_in DROP");
 						return NF_DROP;
@@ -57,7 +59,7 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 				udp_header = (struct udphdr *)(skb_transport_header(skb));
 				if (udp_header)
 				{
-					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->source) == filter_table[i].port|| !(filter_table[i].port)))
+					if((ip_header->saddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->source) == filter_table[i].port|| filter_table[i].port == -1))
 					{
 						printk("udp_in DROP");
 						return NF_DROP;
@@ -86,7 +88,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
 				if (tcp_header)
 				{
-					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->dest) == filter_table[i].port|| !(filter_table[i].port)))
+					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(tcp_header->dest) == filter_table[i].port|| filter_table[i].port == -1))
 					{
 						printk("tcp_in DROP");
 						return NF_DROP;
@@ -98,7 +100,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 				udp_header = (struct udphdr *)(skb_transport_header(skb));
 				if (udp_header)
 				{
-					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->dest) == filter_table[i].port|| !(filter_table[i].port)))
+					if((ip_header->daddr == filter_table[i].ipaddr || filter_table[i].ipaddr == -1) && (ntohs(udp_header->dest) == filter_table[i].port|| filter_table[i].port == -1))
 					{
 						printk("udp_in DROP");
 						return NF_DROP;
@@ -168,13 +170,13 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		printk("read, port = %d, ip_addr = %d, filter = %d, protocol = %d", filter_table[col_filter - 1].port, filter_table[col_filter - 1].ipaddr, data.filter, filter_table[col_filter - 1].protocol);
 		break;
 	case IOCTL_GET_MSG_COL:
-		i = 0; //обнуления счётчика пересланых сообщений
-		copy_to_user(&col_filter, (int *)ioctl_param, sizeof(int)); //передаём кол записей в таблице
-		printk("write %d\n", col_filter);
+		index_filter_get = 0; //обнуления счётчика пересланых сообщений
+		copy_to_user((int *)ioctl_param, &col_filter, sizeof(int)); //передаём кол записей в таблице
 		break;
 	case IOCTL_GET_MSG:
-		copy_to_user(&filter_table[i], (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
-		i++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит приложение
+		copy_to_user((struct DATA_SEND *)ioctl_param, &filter_table[index_filter_get],  sizeof(struct DATA_SEND));
+		index_filter_get++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит приложение
+		printk("write %d\n", index_filter_get);
 		break;
 	}
 	return SUCCESS;

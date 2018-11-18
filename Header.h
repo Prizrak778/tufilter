@@ -16,6 +16,6 @@ struct DATA_FILTER
 #define MAX_COL_FILTER 10
 #define MAJOR_NUM 101
 #define IOCTL_SET_MSG _IOR(MAJOR_NUM, 0, struct DATA_SEND *)
-#define IOCTL_GET_MSG _IOR(MAJOR_NUM, 1, struct DATA_SEND *)
+#define IOCTL_GET_MSG _IOR(MAJOR_NUM, 1, struct DATA_FILTER *)
 #define IOCTL_GET_MSG_COL _IOR(MAJOR_NUM, 2, int *)
 
