@@ -43,10 +43,8 @@ void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 void ioctl_show_filter(int file_desc)
 {
 	struct DATA_FILTER *messag = malloc(sizeof(struct DATA_FILTER));
-	//int *col_row = malloc(sizeof(int));
 	int col_row;
 	int ret_val = ioctl(file_desc, IOCTL_GET_MSG_COL, &col_row);
-	printf("col_filter %d\n", col_row);
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
@@ -70,7 +68,6 @@ void ioctl_show_filter(int file_desc)
 		printf("\n");
 	}
 	free(messag);
-	//free(col_row);
 
 }
 
@@ -111,7 +108,6 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
 	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0);
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
-	printf("%d\n", data->ipaddr);
 	ioctl_set_msg(file_desc, data);
 	free(data);
 }
