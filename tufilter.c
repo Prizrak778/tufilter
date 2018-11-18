@@ -62,7 +62,7 @@ void ioctl_show_filter(int file_desc)
 		ioctl_get_msg(file_desc, messag);
 		messag->protocol == TCP_CONST_PROTOCOL ? strcpy(protocol_str, "tcp") : strcpy(protocol_str, "udp");
 		messag->ipaddr == -1 ? strcpy(ipaddr_get, "0.0.0.0") : (in_addr_get.s_addr = messag->ipaddr, strcpy(ipaddr_get, inet_ntoa(in_addr_get)));
-		printf("%d\t%d\t\t%d\tDROP\t%s\t%s", i, messag->col_packet, messag->size_packet, protocol_str, ipaddr_get);
+		printf("%d\t%u\t%d\t\tDROP\t%s\t%s", i, messag->col_packet, messag->size_packet, protocol_str, ipaddr_get);
 		if(messag->port != -1)
 		{
 			printf(":%d", messag->port);
@@ -164,11 +164,3 @@ int main(int argc, char *argv[])
 	close(file_desc);
 	return 0;
 }
-/*
-unsigned char bytes[4];
-					bytes[0] = ip_header->saddr & 0xFF;
-					bytes[1] = (ip_header->saddr >> 8) & 0xFF;
-					bytes[2] = (ip_header->saddr >> 16) & 0xFF;
-					bytes[3] = (ip_header->saddr >> 24) & 0xFF;
-					printk("%d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
-*/

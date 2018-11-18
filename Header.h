@@ -10,7 +10,7 @@ struct DATA_FILTER
 	int port;
 	uint32_t ipaddr;
 	int protocol;
-	int size_packet;
+	uint32_t size_packet;
 	int col_packet;
 };
 #define MAX_COL_FILTER 10
