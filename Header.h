@@ -5,6 +5,7 @@ struct DATA_SEND
 	uint32_t ipaddr;
 	int filter;
 	int protocol;
+	int flag_in_out;
 };
 //Структура для хранения правил/фильтров и передачи их из модуля ядра в программу
 struct DATA_FILTER
@@ -14,6 +15,7 @@ struct DATA_FILTER
 	int protocol;
 	uint32_t size_packet;
 	int col_packet;
+	int flag_in_out;
 };
 #define MAJOR_NUM 101 //номер символьного устройства
 

@@ -16,6 +16,7 @@
 #define FLAG_FILTER "--filter"
 #define FLAG_IP "--ip"
 #define FLAG_PORT "--port"
+#define FLAG_ROUTE "--route"
 #define FLAG_SHOW "show"
 #define FLAG_HELP "help"
 #define TCP_CONST_PROTOCOL 6
@@ -43,6 +44,21 @@ void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 	}
 }
 
+void show_route_filter(char route_str[], int flag)
+{
+	if(flag == 1)
+	{
+		strcpy(route_str, "output");
+	}
+	else if(flag == -1)
+	{
+		strcpy(route_str, "input");
+	}
+	else
+	{
+		strcpy(route_str, "input&output");
+	}
+}
 //функция для просмотра активных правил и статистики по ним
 void ioctl_show_filter(int file_desc)
 {
@@ -57,9 +73,10 @@ void ioctl_show_filter(int file_desc)
 	}
 	char protocol_str[4];
 	char ipaddr_get[16];
+	char route_str[16];
 	struct in_addr in_addr_get;
 	//основной вывод
-	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\n");
+	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\t\tChain\n");
 	if(col_row < 1)
 	{
 		printf("-- empty -- \n");
@@ -67,6 +84,7 @@ void ioctl_show_filter(int file_desc)
 	for(int i = 0; i < col_row; i++)
 	{
 		ioctl_get_msg(file_desc, messag);
+		show_route_filter(route_str, messag->flag_in_out);
 		messag->protocol == TCP_CONST_PROTOCOL ? strcpy(protocol_str, "tcp") : strcpy(protocol_str, "udp");
 		messag->ipaddr == -1 ? strcpy(ipaddr_get, "0.0.0.0") : (in_addr_get.s_addr = messag->ipaddr, strcpy(ipaddr_get, inet_ntoa(in_addr_get)));
 		printf("%d\t%u\t%d\t\tDROP\t%s\t%s", i, messag->col_packet, messag->size_packet, protocol_str, ipaddr_get);
@@ -74,6 +92,7 @@ void ioctl_show_filter(int file_desc)
 		{
 			printf(":%d", messag->port);
 		}
+		printf("\t%s", route_str);
 		printf("\n");
 	}
 	free(messag);
@@ -83,21 +102,26 @@ void ioctl_show_filter(int file_desc)
 void ioctl_change_filter(int argc, char *argv[], int file_desc)
 {
 	struct DATA_SEND *data = malloc(sizeof(struct DATA_SEND));
-	int filter_flag = -1, port_flag = -1, ipaddr_flag = -1;
+	int filter_flag = -1, port_flag = -1, ipaddr_flag = -1, route_flag = -1;
 	//проверка на наличия нужных флагов и их значений
 	for(int i = 0; i < argc; i++)
 	{
 		if(!strcmp(argv[i], FLAG_FILTER)) filter_flag = i;
 		if(!strcmp(argv[i], FLAG_IP)) ipaddr_flag = i;
 		if(!strcmp(argv[i], FLAG_PORT)) port_flag = i;
+		if(!strcmp(argv[i], FLAG_ROUTE)) route_flag = i;
 	}
 	if(filter_flag == -1 || (ipaddr_flag == -1 && port_flag == -1))
 	{
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
-
-	if(strcasecmp(argv[filter_flag + 1], "enable") && strcmp(argv[filter_flag + 1], "disable"))
+	if((strcasecmp(argv[route_flag + 1], "input") && strcasecmp(argv[route_flag + 1], "output")) && route_flag != -1)
+	{
+		printf("Try 'tufilter --help' for more information\n");
+		exit(-1);
+	}
+	if(strcasecmp(argv[filter_flag + 1], "enable") && strcasecmp(argv[filter_flag + 1], "disable"))
 	{
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
@@ -115,13 +139,14 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 		exit(-1);
 	}
 	//запись в структуру для передачи
+	//по хорошему следую строку надо написать по другом
+	route_flag == -1 ? data->flag_in_out = 0: (strcasecmp(argv[route_flag + 1], "input") == 0 ? data->flag_in_out = -1 : (data->flag_in_out = 1));
 	port_flag == -1 ? (data->port = -1) : (data->port = atoi(argv[port_flag + 1]));
 	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
 	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0); //strcasecmp - функция для сравнения строк без учёта регистра
 	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
 	ioctl_set_msg(file_desc, data);
 	free(data);
-
 }
 //функция для вывода результата добавления фильтра
 void show_answer(int file_desc)
@@ -144,15 +169,18 @@ void show_answer(int file_desc)
 
 void show_help()
 {
-	printf("./tufilter --show - показывает активные правила, если они есть, и статистику по ним(кол пакетов и размер)\n");
-	printf("./tufilter --transport proto - добавить или удалить фильтр, protocol имя протокола (tcp или udp)\n\n");
+	printf("./tufilter --show\t показывает активные правила, если они есть и статистику по ним(кол пакетов и размер)\n");
+	printf("./tufilter --transport proto добавить или удалить фильтр, protocol имя протокола (tcp или udp)\n\n");
 	printf("Опции(для --transport):\n");
-	printf("--ip addres указать ip адрес(ipv4) для блокировки, может отсутствовать\n");
-	printf("--port port указать порт для блокировки, может отсутствовать\n");
-	printf("--filter filter указать отключить(disable) или включить(enable) данный фильтр\n\n");
+	printf("--ip addres\t указать ip адрес(ipv4) для блокировки, может отсутствовать\n");
+	printf("--port port\t указать порт для блокировки, может отсутствовать\n");
+	printf("--route route\t указать какие пакеты фильтровать: входящие(input), исходящие(output)\n");
+	printf("--filter filter\t указать отключить(disable) или включить(enable) данный фильтр\n\n");
 	printf("Пример:\n");
 	printf("./tufilter --transport tcp --ip 8.8.8.8 --port 443 --filter enable\n");
 	printf("./tufilter --transport tcp --port 80 --filter Enable\n");
+	printf("./tufilter --transport tcp --port 81 --filter Enable --route input\n");
+	printf("./tufilter --transport tcp --port 81 --filter Enable --route output\n");
 	printf("./tufilter --transport udp --ip 8.8.8.8 --filter Enable\n");
 	printf("./tufilter --transport udp --ip 8.8.8.8 --filter disable\n");
 	printf("./tufilter --show\n");
@@ -167,9 +195,11 @@ int main(int argc, char *argv[])
 	const struct option long_options[] =
 	{
 	{FLAG_TRANSPORT, 1, &flag_case , 1},
-	{"port", 1, NULL, 1},
-	{"ip", 1, NULL , 1},
-	{"filter", 1, NULL , 1},
+	{"port", 1, NULL, 4},
+	{"ip", 1, NULL , 4},
+	{"filter", 1, NULL , 4},
+	{"filter", 1, NULL , 4},
+	{"route", 1, NULL , 4},
 	{FLAG_SHOW, 0, &flag_case, 2},
 	{FLAG_HELP, 0, &flag_case, 3},
 	{NULL, 0, NULL, 0}
@@ -203,7 +233,6 @@ int main(int argc, char *argv[])
 		exit(1);
 		break;
 	}
-
 	close(file_desc);
 	return 0;
 }

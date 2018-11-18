@@ -41,6 +41,9 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 		ip_header = (struct iphdr *)skb_network_header(skb);
 		for(i = 0; i < col_filter; i++)
 		{
+			//0 - проверять пакеты в обе стороны, -1 проверять только входящие пакеты
+			if(filter_table[col_filter].flag_in_out < 1)
+			{
 			// Проверяем что это внутри TCP или UDP пакет
 			if (ip_header->protocol == filter_table[i].protocol)
 			{
@@ -68,6 +71,7 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 					}
 				}
 			}
+			}
 		}
 	}
 	return NF_ACCEPT;
@@ -86,6 +90,9 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 		// Проверяем что это внутри TCP или UDP пакет
 		for(i = 0; i < col_filter; i++)
 		{
+			//0 - проверять пакеты в обе стороны, 1 проверять только исходящие пакеты
+			if(filter_table[col_filter].flag_in_out > -1)
+			{
 			if (ip_header->protocol == IPPROTO_TCP)
 			{
 				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
@@ -112,6 +119,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 					}
 				}
 			}
+			}
 		}
 	}
 	return NF_ACCEPT;
@@ -129,11 +137,11 @@ void del_filter(int cmp_index)
 //функция для сравнения правил
 int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
 {
-	if(filter_str.ipaddr == data.ipaddr && filter_str.port == data.port && filter_str.protocol == data.protocol)
+	if(filter_str.ipaddr == data.ipaddr && filter_str.port == data.port && filter_str.protocol == data.protocol && filter_str.flag_in_out == data.flag_in_out)
 	{
 		return index;
 	}
-	return 0;
+	return -1;
 }
 
 long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param)
@@ -146,18 +154,19 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 	case IOCTL_SET_MSG:
 		//принять новое правило
 		flag_table = 0;
+		cmp_index = -1;
 		copy_from_user(&data, (struct DATA_SEND *)ioctl_param, sizeof(struct DATA_SEND));
-
 		if(data.filter == 1 && col_filter < MAX_COL_FILTER)
 		{
-			for(i = 0; i < col_filter || cmp_index; i++)
+			for(i = 0; (i < col_filter) && (cmp_index  == -1); i++)
 			{
 				cmp_index = cmp_filter(filter_table[i], data, i);//в случае если такое правило уже существует пользователь об этом узнает
 			}
-			if(!cmp_index)
+			if(cmp_index < 0 || !col_filter )
 			{
 				filter_table[col_filter].col_packet = 0;
 				filter_table[col_filter].size_packet = 0;
+				filter_table[col_filter].flag_in_out = data.flag_in_out;
 				filter_table[col_filter].ipaddr = data.ipaddr;
 				filter_table[col_filter].port = data.port;
 				filter_table[col_filter].protocol = data.protocol;
@@ -165,17 +174,20 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 			}
 			else
 			{
-				flag_table = 2; //в случае если добовляемый фильтр уже
+				flag_table = 2; //в случае если добовляемый фильтр уже существует
 			}
 		}
 		else if(data.filter == 0)
 		{
-			for(i = 0; i < col_filter || cmp_index ; i++)
+			for(i = 0; i < col_filter && cmp_index == -1 ; i++)
 			{
 				cmp_index = cmp_filter(filter_table[i], data, i);
 			}
-			del_filter(cmp_index);
-			col_filter--;
+			if(cmp_index > -1)
+			{
+				del_filter(cmp_index);
+				col_filter--;
+			}
 		}
 		else
 		{
