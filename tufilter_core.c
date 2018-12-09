@@ -199,6 +199,11 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		copy_to_user((int *)ioctl_param, &col_filter, sizeof(int)); //передаём кол записей в таблице
 		break;
 	case IOCTL_GET_MSG:
+		//в случае если количество передаваемых записей будет больше, чем количество фильтров в таблице, то будет передаваться всегда последняя запись
+		if(index_filter_get => col_filter)
+		{
+			index_filter_get = col_filter - 1;
+		}
 		copy_to_user((struct DATA_FILTER *)ioctl_param, &filter_table[index_filter_get],  sizeof(struct DATA_FILTER));
 		index_filter_get++; //после считывания увеличиваем счётчик, за количеством переданных запесей следит приложение
 		break;
