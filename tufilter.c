@@ -12,7 +12,7 @@
 #include "Header.h"
 
 #define DEVICE_FILE_NAME "tufilter_dev"
-#define FLAG_TRANSPORT "transport"
+#define FLAG_TRANSPORT "--transport"
 #define FLAG_FILTER "--filter"
 #define FLAG_IP "--ip"
 #define FLAG_PORT "--port"
@@ -121,7 +121,7 @@ void ioctl_err(struct DATA_SEND *data)
 void ioctl_change_filter(int argc, char *argv[], int file_desc)
 {
 	struct DATA_SEND *data = malloc(sizeof(struct DATA_SEND));
-	int filter_flag = -1, port_flag = -1, ipaddr_flag = -1, route_flag = -1;
+	int filter_flag = -1, port_flag = -1, ipaddr_flag = -1, route_flag = -1, transport_flag = -1;
 	//проверка на наличия нужных флагов и их значений
 	for(int i = 0; i < argc; i++)
 	{
@@ -129,11 +129,18 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 		if(!strcmp(argv[i], FLAG_IP)) ipaddr_flag = i;
 		if(!strcmp(argv[i], FLAG_PORT)) port_flag = i;
 		if(!strcmp(argv[i], FLAG_ROUTE)) route_flag = i;
+		if(!strcmp(argv[i], FLAG_TRANSPORT)) transport_flag = i;
 	}
 	if(filter_flag == -1 || (ipaddr_flag == -1 && port_flag == -1))
 	{
 		ioctl_err(data);
 	}
+	printf("%d\n", transport_flag);
+	if(transport_flag == -1 || (strcasecmp(argv[transport_flag + 1], "tcp") && strcasecmp(argv[transport_flag + 1], "udp")))
+	{
+		ioctl_err(data);
+	}
+
 	if((strcasecmp(argv[route_flag + 1], "input") && strcasecmp(argv[route_flag + 1], "output")) && route_flag != -1)
 	{
 		ioctl_err(data);
@@ -154,13 +161,15 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	}
 	//запись в структуру для передачи
 	//по хорошему следую строку надо написать по другом
+
 	route_flag == -1 ? data->flag_in_out = 0: (strcasecmp(argv[route_flag + 1], "input") == 0 ? data->flag_in_out = -1 : (data->flag_in_out = 1));
 	port_flag == -1 ? (data->port = -1) : (data->port = atoi(argv[port_flag + 1]));
 	ipaddr_flag == -1 ? (data->ipaddr = -1) : (data->ipaddr = in_addr_send.s_addr);
 	strcasecmp(argv[filter_flag + 1], "enable") == 0 ? (data->filter = 1) : (data->filter = 0); //strcasecmp - функция для сравнения строк без учёта регистра
-	strcasecmp(argv[2], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
+	strcasecmp(argv[transport_flag + 1], "tcp") == 0 ? (data->protocol = TCP_CONST_PROTOCOL) : (data->protocol = UDP_CONST_PROTOCOL);
 	ioctl_set_msg(file_desc, data);
 	free(data);
+	data = NULL;
 }
 //функция для вывода результата добавления фильтра
 void show_answer(int file_desc)
@@ -208,12 +217,12 @@ int main(int argc, char *argv[])
 	//структура для "длинных" входных параметров
 	const struct option long_options[] =
 	{
-	{FLAG_TRANSPORT, 1, &flag_case , 1},
-	{"port", 1, NULL, 4},
-	{"ip", 1, NULL , 4},
-	{"filter", 1, NULL , 4},
-	{"filter", 1, NULL , 4},
-	{"route", 1, NULL , 4},
+	{"transport", 1, &flag_case , 1},
+	{"port", 1, &flag_case , 1},
+	{"ip", 1, &flag_case , 1},
+	{"filter", 1, &flag_case , 1},
+	{"filter", 1, &flag_case , 1},
+	{"route", 1, &flag_case , 1},
 	{FLAG_SHOW, 0, &flag_case, 2},
 	{FLAG_HELP, 0, &flag_case, 3},
 	{NULL, 0, NULL, 0}
@@ -229,10 +238,19 @@ int main(int argc, char *argv[])
 		printf("Try 'tufilter --help' for more information\n");
 		exit(-1);
 	}
-	while (getopt_long (argc, argv, short_options, long_options, &option_index) != -1);
+	int getopt_val = 1;
+	while (getopt_val  != -1)
+	{
+		getopt_val = getopt_long (argc, argv, short_options, long_options, &option_index);
+		if(getopt_val == 63)
+		{
+			exit(-1);
+		}
+	}
 	switch (flag_case) {
 	case 1:
 		ioctl_change_filter(argc, argv, file_desc);
+
 		show_answer(file_desc);
 		break;
 	case 2:
