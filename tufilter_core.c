@@ -11,10 +11,10 @@
 #include <linux/udp.h>
 #include "Header.h"
 
-struct DATA_FILTER filter_table[MAX_COL_FILTER];
-int col_filter = 0;
-int index_filter_get = 0;
-int flag_table = 0;
+static struct DATA_FILTER filter_table[MAX_COL_FILTER];
+static int col_filter = 0;
+static int index_filter_get = 0;
+static int flag_table = 0;
 
 MODULE_AUTHOR("spear_soul <v.merkel778@gmail.com>");
 MODULE_DESCRIPTION("tufilter");
@@ -200,7 +200,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		break;
 	case IOCTL_GET_MSG:
 		//в случае если количество передаваемых записей будет больше, чем количество фильтров в таблице, то будет передаваться всегда последняя запись
-		if(index_filter_get => col_filter)
+		if(index_filter_get >= col_filter)
 		{
 			index_filter_get = col_filter - 1;
 		}
