@@ -1,14 +1,14 @@
 #тест по блокировки всех сайтов
-./tufilter --transport  --port 443 --filter Enable
-./tufilter --transport tcp --port  --filter Enable
-./tufilter --port 443 --filter  --transport udp
-./tufilter --port 80 --filter Enable --transport 
-#./tufilter --transport TCP --port 444 --filter Enable
-#./tufilter --transport TCP --port 445 --filter Enable
-#./tufilter --transport TCP --port 446 --filter Enable
-#./tufilter --transport TCP --port 447 --filter Enable
-#./tufilter --transport TCP --port 448 --filter Enable
-#./tufilter --transport TCP --port 449 --filter Enable
+./tufilter --transport tcp  --port 443 --filter Enable
+./tufilter --transport tcp --port 80 --filter Enable
+./tufilter --port 443 --filter enable  --transport udp
+./tufilter --port 80 --filter Enable --transport udp 
+./tufilter --transport TCP --port 444 --filter Enable
+./tufilter --transport TCP --port 445 --filter Enable
+./tufilter --transport TCP --port 446 --filter Enable
+./tufilter --transport TCP --port 447 --filter Enable
+./tufilter --transport TCP --port 448 --filter Enable
+./tufilter --transport TCP --port 449 --filter Enable
 #./tufilter --transport uDp --port 81 --filter Enable --route output
 #./tufilter --transport uDp --port 81 --filter Enable --route input
 #./tufilter --transport uDp --port 81 --filter disable --route input

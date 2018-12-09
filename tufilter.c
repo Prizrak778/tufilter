@@ -135,7 +135,6 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	{
 		ioctl_err(data);
 	}
-	printf("%d\n", transport_flag);
 	if(transport_flag == -1 || (strcasecmp(argv[transport_flag + 1], "tcp") && strcasecmp(argv[transport_flag + 1], "udp")))
 	{
 		ioctl_err(data);
