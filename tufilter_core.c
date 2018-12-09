@@ -134,9 +134,9 @@ void del_filter(int cmp_index)
 	}
 }
 //функция для сравнения правил
-int cmp_filter(struct DATA_FILTER filter_str, struct DATA_SEND data, int index)
+int cmp_filter(const struct DATA_FILTER *filter_str, const struct DATA_SEND *data, int index)
 {
-	if(filter_str.ipaddr == data.ipaddr && filter_str.port == data.port && filter_str.protocol == data.protocol && filter_str.flag_in_out == data.flag_in_out)
+	if(filter_str->ipaddr == data->ipaddr && filter_str->port == data->port && filter_str->protocol == data->protocol && filter_str->flag_in_out == data->flag_in_out)
 	{
 		return index;
 	}
@@ -159,7 +159,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		{
 			for(i = 0; (i < col_filter) && (cmp_index  == -1); i++)
 			{
-				cmp_index = cmp_filter(filter_table[i], data, i);//в случае если такое правило уже существует пользователь об этом узнает
+				cmp_index = cmp_filter(&filter_table[i], &data, i);//в случае если такое правило уже существует пользователь об этом узнает
 			}
 			if(cmp_index < 0 || !col_filter )
 			{
@@ -180,7 +180,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl
 		{
 			for(i = 0; i < col_filter && cmp_index == -1 ; i++)
 			{
-				cmp_index = cmp_filter(filter_table[i], data, i);
+				cmp_index = cmp_filter(&filter_table[i], &data, i);
 			}
 			if(cmp_index > -1)
 			{
