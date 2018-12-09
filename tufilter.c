@@ -21,6 +21,10 @@
 #define FLAG_HELP "help"
 #define TCP_CONST_PROTOCOL 6
 #define UDP_CONST_PROTOCOL 17 //В модуле ядра 0 - tcp, 17 - udp;
+#define MAX_COL_PORT 65535
+#define PROTOCOL_STR_LEN 4
+#define IP_STR_LEN 16
+#define ROUTE_STR_LEN 16
 
 //функция для отправки одного сообещния
 void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
@@ -29,6 +33,8 @@ void ioctl_set_msg(int file_desc, struct DATA_SEND *messag)
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_set_msg: %d\n", ret_val);
+		free(messag);
+		messag = NULL;
 		exit(-1);
 	}
 }
@@ -40,6 +46,8 @@ void ioctl_get_msg(int file_desc, struct DATA_FILTER *messag)
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_set_msg: %d\n", ret_val);
+		free(messag);
+		messag = NULL;
 		exit(-1);
 	}
 }
@@ -69,11 +77,13 @@ void ioctl_show_filter(int file_desc)
 	if(ret_val < 0)
 	{
 		printf("Ошибка при вызове ioctl_show_filter: %d\n", ret_val);
+		free(messag);
+		messag = NULL;
 		exit(-1);
 	}
-	char protocol_str[4];
-	char ipaddr_get[16];
-	char route_str[16];
+	char protocol_str[PROTOCOL_STR_LEN];
+	char ipaddr_get[IP_STR_LEN];
+	char route_str[ROUTE_STR_LEN];
 	struct in_addr in_addr_get;
 	//основной вывод
 	printf("num\tpkts\tbytes\t\ttarget\tprot\tsourse\t\tChain\n");
@@ -96,6 +106,15 @@ void ioctl_show_filter(int file_desc)
 		printf("\n");
 	}
 	free(messag);
+	messag = NULL;
+}
+
+void ioctl_err(struct DATA_SEND *data)
+{
+	printf("Try 'tufilter --help' for more information\n");
+	free(data);
+	data = NULL;
+	exit(-1);
 }
 
 //функция для добавления/удаления правила/фильтра
@@ -113,30 +132,25 @@ void ioctl_change_filter(int argc, char *argv[], int file_desc)
 	}
 	if(filter_flag == -1 || (ipaddr_flag == -1 && port_flag == -1))
 	{
-		printf("Try 'tufilter --help' for more information\n");
-		exit(-1);
+		ioctl_err(data);
 	}
 	if((strcasecmp(argv[route_flag + 1], "input") && strcasecmp(argv[route_flag + 1], "output")) && route_flag != -1)
 	{
-		printf("Try 'tufilter --help' for more information\n");
-		exit(-1);
+		ioctl_err(data);
 	}
 	if(strcasecmp(argv[filter_flag + 1], "enable") && strcasecmp(argv[filter_flag + 1], "disable"))
 	{
-		printf("Try 'tufilter --help' for more information\n");
-		exit(-1);
+		ioctl_err(data);
 	}
 	int port_check = atoi(argv[port_flag + 1]);
-	if((port_check > 65536 || 0 > port_check) && port_flag > 0)
+	if((port_check > MAX_COL_PORT || 0 > port_check) && port_flag > 0)
 	{
-		printf("Try 'tufilter --help' for more information\n");
-		exit(-1);
+		ioctl_err(data);
 	}
 	struct in_addr in_addr_send;
 	if((inet_aton(argv[ipaddr_flag + 1], &in_addr_send) == 0) && ipaddr_flag > 0)
 	{
-		printf("Try 'tufilter --help' for more information\n");
-		exit(-1);
+		ioctl_err(data);
 	}
 	//запись в структуру для передачи
 	//по хорошему следую строку надо написать по другом
