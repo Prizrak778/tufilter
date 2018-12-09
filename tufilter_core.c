@@ -44,7 +44,7 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 			if(filter_table[col_filter].flag_in_out < 1)
 			{
 			// Проверяем что это внутри TCP или UDP пакет
-			if (ip_header->protocol == filter_table[i].protocol)
+			if (ip_header->protocol == filter_table[i].protocol && ip_header->protocol == IPPROTO_TCP)
 			{
 				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
 				if (tcp_header)
@@ -57,7 +57,7 @@ static unsigned int hook_func_in(void *priv, struct sk_buff *skb, const struct n
 					}
 				}
 			}
-			else if(ip_header->protocol == filter_table[i].protocol)
+			else if(ip_header->protocol == filter_table[i].protocol && ip_header->protocol == IPPROTO_UDP)
 			{
 				udp_header = (struct udphdr *)(skb_transport_header(skb));
 				if (udp_header)
@@ -92,7 +92,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 			//0 - проверять пакеты в обе стороны, 1 проверять только исходящие пакеты
 			if(filter_table[col_filter].flag_in_out > -1)
 			{
-			if (ip_header->protocol == IPPROTO_TCP)
+			if (ip_header->protocol == IPPROTO_TCP && ip_header->protocol == filter_table[i].protocol)
 			{
 				tcp_header = (struct tcphdr *)(skb_transport_header(skb));
 				if (tcp_header)
@@ -105,7 +105,7 @@ static unsigned int hook_func_out(void *priv, struct sk_buff *skb, const struct 
 					}
 				}
 			}
-			else if(ip_header->protocol == IPPROTO_UDP)
+			else if(ip_header->protocol == IPPROTO_UDP && ip_header->protocol == filter_table[i].protocol)
 			{
 				udp_header = (struct udphdr *)(skb_transport_header(skb));
 				if (udp_header)
